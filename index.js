@@ -116,7 +116,7 @@ files.prototype.upload = function(req, res) {
       var dbResult;
       var fileModel = elements.getModel('file');
 
-      if(err && err.name == 'NotUnique') {
+      if(err && err.name === 'NotUnique') {
         dbResult = err.result;
         if(dbResult) {
           if(!dbResult.url) {
