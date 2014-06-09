@@ -1,0 +1,11 @@
+language: node_js
+services:
+  - mongodb
+  - elasticsearch
+node_js:
+  - "0.10"
+before_script:
+  - sleep 30
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install catdoc poppler-utils tesseract-ocr unzip
