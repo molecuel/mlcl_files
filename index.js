@@ -116,14 +116,14 @@ files.prototype.upload = function(req, res) {
       var dbResult;
       var fileModel = elements.getModel('file');
 
-      if(err && err.name === 'NotUnique') {
+      if(err && err.name == 'NotUnique') {
         dbResult = err.result;
         if(dbResult) {
           if(!dbResult.url) {
             fileModel.findById(dbResult._id, function(err, myobj) {
               // save it again to ensure url creation
-              myobj.save(function() {
-                renderResult(res, dbResult);
+              myobj.save(function(err, obj) {
+                renderResult(res, obj);
               });
             });
           } else {
@@ -137,12 +137,12 @@ files.prototype.upload = function(req, res) {
         dbResult = result;
         fileModel.findById(dbResult._id, function(err, myobj) {
           // save it again to ensure url creation
-          myobj.save(function() {
-            renderResult(res, dbResult);
+          myobj.save(function(err, obj) {
+            renderResult(res, obj);
           });
         });
       }
-
+      
     });
   } else {
     res.send(500);
