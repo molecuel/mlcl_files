@@ -88,6 +88,7 @@ describe('mlcl_elastic', function() {
 
     describe('upload', function() {
       it('should upload a file successfully', function(done) {
+        this.timeout(5000);
         var r = request.post('http://localhost:8000/file/upload', function optionalCallback (err, httpResponse, body) {
           should.not.exists(err);
           should.exist(body);
