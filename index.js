@@ -41,13 +41,19 @@ var files = function() {
       },
       md5: { type: String, trim: true }
     };
-    elements.registerSchemaDefinition('file', self.fileSchema, {
-      indexable: true,
-      avoidTranslate: true,
-      noStrict: true,
-      collection: 'fs.files',
-      subSchema: true
-    });
+
+    var schemaDefinition = {
+      schemaName: 'file',
+      schema: self.fileSchema,
+      options: {
+        indexable: true,
+        avoidTranslate: true,
+        noStrict: true,
+        collection: 'fs.files',
+        subSchema: true
+      }
+    };
+    elements.registerSchemaDefinition(schemaDefinition);
     elements.registerTypeHandler('file', self.download);
   });
 
