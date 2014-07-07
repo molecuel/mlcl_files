@@ -98,22 +98,25 @@ files.prototype.upload = function(req, res) {
   var renderResult = function renderResult(res, dataset) {
     var files = [];
 
-    var result = {
-      name: dataset.filename,
-      size: dataset.length,
-      url: dataset.url,
-      thumbnailUrl: dataset.url,
-      deleteUrl: dataset.url,
-      deleteType: 'DELETE',
-      result: dataset
-    };
+    if(dataset) {
+      var result = {
+        name: dataset.filename,
+        size: dataset.length,
+        url: dataset.url,
+        thumbnailUrl: dataset.url,
+        deleteUrl: dataset.url,
+        deleteType: 'DELETE',
+        result: dataset
+      };
 
-    // file path are never relative
-    if (result.url && result.url.charAt(0) !== '/') {
-      result.url = '/'+result.url;
+      // file path are never relative
+      if (result.url && result.url.charAt(0) !== '/') {
+        result.url = '/'+result.url;
+      }
+
+      files.push(result);
     }
 
-    files.push(result);
     res.send({files: files});
   };
 
