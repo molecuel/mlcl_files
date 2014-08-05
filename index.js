@@ -59,7 +59,10 @@ var files = function() {
 
   molecuel.on('mlcl::core::middlewareRegister:post', function(module, app) {
     app.use(multer());
+    // send init event
+    molecuel.emit('mlcl::files::init:post', self);
   });
+
 };
 
 
@@ -86,72 +89,12 @@ var getInstance = function () {
  * @param next
  */
 files.prototype.upload = function(req, res) {
-
-  var files = getInstance();
-
-  /**
-   * renderResult
-   * renders the result from the db into a json object with delete url etc
-   * @param res
-   * @param dataset
-   */
-  var renderResult = function renderResult(res, dataset) {
-    var files = [];
-
-    if(dataset) {
-      var result = {
-        name: dataset.filename,
-        size: dataset.length,
-        url: dataset.url,
-        thumbnailUrl: dataset.url,
-        deleteUrl: dataset.url,
-        deleteType: 'DELETE',
-        result: dataset
-      };
-
-      // file path are never relative
-      if (result.url && result.url.charAt(0) !== '/') {
-        result.url = '/'+result.url;
-      }
-
-      files.push(result);
-    }
-
-    res.send({files: files});
-  };
-
   if(req.files) {
-    files.grid.putUniqueFile(req.files.files.path, req.files.files.originalname, null, function (err, result) {
-      var dbResult;
-      var fileModel = elements.getModel('file');
-
-      if(err && err.name === 'NotUnique') {
-        dbResult = err.result;
-        if(dbResult) {
-          if(!dbResult.url) {
-            fileModel.findById(dbResult._id, function(err, myobj) {
-              // save it again to ensure url creation
-              myobj.save(function(err, obj) {
-                renderResult(res, obj);
-              });
-            });
-          } else {
-            renderResult(res, dbResult);
-          }
-        }
-
-      } else if(err) {
-        res.send(500);
-      } else {
-        dbResult = result;
-        fileModel.findById(dbResult._id, function(err, myobj) {
-          // save it again to ensure url creation
-          myobj.save(function(err, obj) {
-            renderResult(res, obj);
-          });
-        });
+    this.saveFile(req.files.files.path, req.files.files.originalname, null, function(err, result) {
+      if(err) {
+        return res.send(500, err);
       }
-
+      res.send({files: [result]});
     });
   } else {
     res.send(500);
@@ -203,6 +146,78 @@ files.prototype.deleteFile = function deleteFile(req, res) {
     }
   });
 };
+
+files.prototype.saveFile = function saveFile(path, name, options, callback) {
+  var files = getInstance();
+
+  /**
+   * renderResult
+   * renders the result from the db into a json object with delete url etc
+   * @param res
+   * @param dataset
+   */
+  var renderResult = function renderResult(dataset) {
+    var result;
+    if(dataset) {
+      result = {
+        name: dataset.filename,
+        size: dataset.length,
+        url: dataset.url,
+        thumbnailUrl: dataset.url,
+        deleteUrl: dataset.url,
+        deleteType: 'DELETE',
+        result: dataset
+      };
+
+      // file path are never relative
+      if (result.url && result.url.charAt(0) !== '/') {
+        result.url = '/'+result.url;
+      }
+    }
+    return result;
+  };
+
+  files.grid.putUniqueFile(path, name, null, function(err, result) {
+    var dbResult;
+    var fileModel = elements.getModel('file');
+
+    if(err && err.name === 'NotUnique') {
+      dbResult = err.result;
+      if(dbResult) {
+        if(!dbResult.url) {
+          fileModel.findById(dbResult._id, function(err, myobj) {
+            // save it again to ensure url creation
+            myobj.save(function(err, obj) {
+              if(err) {
+                return callback(err);
+              }
+              return callback(null, renderResult(obj));
+            });
+          });
+        } else {
+          return callback(null, renderResult(dbResult));
+        }
+      }
+    } else if(err) {
+      return callback(err);
+    } else {
+      dbResult = result;
+      fileModel.findById(dbResult._id, function(err, myobj) {
+        if(options && options.url) {
+          myobj.url = options.url;
+        }
+        // save it again to ensure url creation
+        myobj.save(function(err, obj) {
+          if(err) {
+            return callback(err);
+          }
+          return callback(null, renderResult(obj));
+        });
+      });
+    }
+  });
+};
+
 
 var init = function(mlcl) {
   molecuel = mlcl;
