@@ -132,20 +132,31 @@ files.prototype.download = function download(req, res, next) {
  */
 files.prototype.deleteFile = function deleteFile(req, res) {
   var files = getInstance();
-  var grid = files.grid;
   var id = res.locals.data.main._id;
-  grid.deleteFile(id, null, function(err) {
+  files.deleteById(id, function(err) {
     if(err) {
       res.send(500);
     } else {
+      res.send(200);
+    }
+  });
+};
+
+files.prototype.deleteById = function deleteById(id, callback) {
+  var files = getInstance();
+  var grid = files.grid;
+  grid.deleteFile(id, null, function(err) {
+    if(err) {
+      return callback(err);
+    } else {
       if(elements && elements.elastic) {
         elements.elastic.delete('file', id, function() {
-          res.send(200);
+          return callback();
         });
       }
     }
   });
-};
+}
 
 files.prototype.saveFile = function saveFile(path, name, options, callback) {
   var files = getInstance();
@@ -181,12 +192,15 @@ files.prototype.saveFile = function saveFile(path, name, options, callback) {
     var dbResult;
     var fileModel = elements.getModel('file');
 
-    if(err && err.name === 'NotUnique') {
+    if(err && err.name === 'NotUnique') { //File already in gridfs
       dbResult = err.result;
       if(dbResult) {
-        if(!dbResult.url) {
+        if(!dbResult.url || (options && options.url && options.url !== dbResult.url)) {
           fileModel.findById(dbResult._id, function(err, myobj) {
             // save it again to ensure url creation
+            if(options && options.url) {
+              myobj.url = options.url;
+            }
             myobj.save(function(err, obj) {
               if(err) {
                 return callback(err);
