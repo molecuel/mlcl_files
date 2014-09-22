@@ -5,6 +5,10 @@
 var molecuel, elements;
 var grid = require('gridfs-uploader');
 var multer = require('multer');
+var os = require('os');
+var flowlib = require('./lib/flow.js');
+var fs = require('fs');
+var uuid = require('node-uuid');
 
 /**
  * file module for molecuel CMS
@@ -12,6 +16,13 @@ var multer = require('multer');
 var files = function() {
 
   var self = this;
+
+  this.uploadDir = os.tmpdir();
+
+  if(molecuel.config && molecuel.config.files && molecuel.config.files.uploaddir) {
+    this.uploadDir = molecuel.config.files.uploaddir;
+  }
+  this.flow = flowlib(this.uploadDir);
 
   molecuel.on('mlcl::elements::registrations:pre',  function(module) {
 
@@ -58,7 +69,7 @@ var files = function() {
   });
 
   molecuel.on('mlcl::core::middlewareRegister:post', function(module, app) {
-    app.use(multer());
+    //app.use(multer());
     // send init event
     molecuel.emit('mlcl::files::init:post', self);
   });
@@ -102,6 +113,58 @@ files.prototype.upload = function(req, res) {
 };
 
 /**
+ * Upload handler for files with flow library
+ * @param req
+ * @param res
+ */
+files.prototype.uploadFlow = function(req, res) {
+  var files = getInstance();
+  files.flow.post(req, function(status, filename, original_filename, identifier) {
+    if(status === 'done') {
+      var fileuuid = uuid.v4();
+      var tmpfile = files.uploadDir + '/' +fileuuid;
+      var stream = fs.createWriteStream(files.uploadDir + '/' +fileuuid);
+      files.flow.write(identifier, stream);
+
+      stream.on('finish', function() {
+        files.saveFile(tmpfile, original_filename, null, function(errSave, result) {
+          if(errSave) {
+            res.send(400, 'Error saving file');
+          } else {
+            files.flow.clean(identifier);
+            fs.unlink(tmpfile, function(errDelete) {
+              res.send(200, {
+                  'file': result.result._id
+              });
+            });
+          }
+        });
+      });
+    } else {
+      res.send(200);
+    }
+  });
+};
+
+/**
+ * Upload handler for files with flow library
+ * @param req
+ * @param res
+ * @todo check via gridfs if file is already available.
+ */
+files.prototype.uploadFlowStatus = function(req, res) {
+//  res.send(404);
+  var files = getInstance();
+  files.flow.get(req, function(status, filename, original_filename, identifier) {
+      if(status === 'found') {
+        res.send(200);
+      } else {
+        res.send(404);
+      }
+  });
+};
+
+/**
  * Download handler for elements file type
  * @param req
  * @param res
@@ -142,6 +205,20 @@ files.prototype.deleteFile = function deleteFile(req, res) {
   });
 };
 
+
+files.prototype.getFileInfo = function getFileInfo(req, res) {
+  var files = getInstance();
+  files.getInfoById(req.params.id, function(err, doc) {
+    if(err) {
+      res.send(500);
+    } else if(doc){
+      res.send(doc);
+    } else {
+      res.send(404);
+    }
+  });
+};
+
 files.prototype.deleteById = function deleteById(id, callback) {
   var files = getInstance();
   var grid = files.grid;
@@ -156,7 +233,13 @@ files.prototype.deleteById = function deleteById(id, callback) {
       }
     }
   });
-}
+};
+
+files.prototype.getInfoById = function(id, callback) {
+  var files = getInstance();
+  var file = elements.getElementType('file');
+  file.findById(id, callback);
+};
 
 files.prototype.saveFile = function saveFile(path, name, options, callback) {
   var files = getInstance();
