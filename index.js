@@ -271,7 +271,7 @@ files.prototype.saveFile = function saveFile(path, name, options, callback) {
     return result;
   };
 
-  files.grid.putUniqueFile(path, name, null, function(err, result) {
+  files.grid.putUniqueFile(path, name, options, function(err, result) {
     var dbResult;
     var fileModel = elements.getModel('file');
 
