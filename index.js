@@ -37,7 +37,7 @@ var files = function() {
 
     self.fileSchema =  {
       // Definition of the filename
-      filename: { type: String},
+      filename: { type: String, select: true, index:true },
       // Define the content type
       contentType: { type: String},
       // length data
